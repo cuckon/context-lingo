@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { InputArea } from './components/InputArea';
 import { InteractiveText } from './components/InteractiveText';
 import { AnalysisPanel } from './components/AnalysisPanel';
+import { VocabularyList } from './components/VocabularyList';
 import { translateParagraph, analyzeWordInContext } from './services/gemini';
-import { AppStatus, AnalysisResult } from './types';
-import { Book, RefreshCw, X } from 'lucide-react';
+import { AppStatus, AnalysisResult, VocabularyItem } from './types';
+import { Book, RefreshCw, X, Library } from 'lucide-react';
 
 const App: React.FC = () => {
   const [input, setInput] = useState<string>("");
@@ -15,6 +16,17 @@ const App: React.FC = () => {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showAnalysisMobile, setShowAnalysisMobile] = useState(false);
+
+  // Vocabulary State
+  const [savedItems, setSavedItems] = useState<VocabularyItem[]>(() => {
+    const saved = localStorage.getItem('vocabulary');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [showVocabulary, setShowVocabulary] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('vocabulary', JSON.stringify(savedItems));
+  }, [savedItems]);
 
   const handleTranslate = async () => {
     if (!input.trim()) return;
@@ -36,24 +48,52 @@ const App: React.FC = () => {
   };
 
   const handleWordClick = async (word: string) => {
-    // Basic normalization: remove trailing punctuation attached to logic if any leaked through
     const cleanWord = word.replace(/[^a-zA-Z0-9'’-]/g, '');
     if (!cleanWord) return;
 
-    setSelectedWord(word); // Keep original visual selection
+    setSelectedWord(word); 
     setIsAnalyzing(true);
     setAnalysisResult(null);
-    setShowAnalysisMobile(true); // Trigger mobile slide-up
+    setShowAnalysisMobile(true); 
 
     try {
+      // Check if we already analyzed this word in this session to avoid re-fetching?
+      // For now, always fetch to ensure context is correct if they click around.
       const result = await analyzeWordInContext(input, cleanWord);
       setAnalysisResult(result);
     } catch (error) {
       console.error(error);
-      // Optional: Handle analysis error visually
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  const handleSaveVocabulary = () => {
+    if (!selectedWord || !analysisResult) return;
+
+    // Check if already saved (simple check by word + specific sentence context to allow duplicate words in diff contexts)
+    const alreadySaved = savedItems.some(item => 
+      item.word === selectedWord && item.analysis.sentence === analysisResult.sentence
+    );
+
+    if (alreadySaved) {
+       // Optional: Toggle off / remove? For now let's just allow removing via list.
+       // Or we can just return if already saved.
+       return;
+    }
+
+    const newItem: VocabularyItem = {
+      id: Date.now().toString(),
+      word: selectedWord,
+      analysis: analysisResult,
+      timestamp: Date.now()
+    };
+
+    setSavedItems(prev => [newItem, ...prev]);
+  };
+
+  const handleDeleteVocabulary = (id: string) => {
+    setSavedItems(prev => prev.filter(item => item.id !== id));
   };
 
   const resetApp = () => {
@@ -64,24 +104,44 @@ const App: React.FC = () => {
     setAnalysisResult(null);
   };
 
+  const isCurrentWordSaved = analysisResult ? savedItems.some(item => 
+    item.word === selectedWord && item.analysis.sentence === analysisResult.sentence
+  ) : false;
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
       {/* Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-2 text-indigo-600">
+          <div className="flex items-center space-x-2 text-indigo-600 cursor-pointer" onClick={() => setStatus('idle')}>
             <Book className="w-6 h-6" />
             <h1 className="text-xl font-bold tracking-tight text-slate-900">ContextLingo</h1>
           </div>
-          {status !== 'idle' && (
-            <button 
-              onClick={resetApp}
-              className="text-sm font-medium text-slate-500 hover:text-indigo-600 flex items-center space-x-1"
+          
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => setShowVocabulary(true)}
+              className="text-sm font-medium text-slate-600 hover:text-indigo-600 flex items-center space-x-1.5 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors"
             >
-              <RefreshCw size={14} />
-              <span>New Text</span>
+              <Library size={18} />
+              <span>My Vocabulary</span>
+              {savedItems.length > 0 && (
+                <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-1.5 py-0.5 rounded-full">
+                  {savedItems.length}
+                </span>
+              )}
             </button>
-          )}
+
+            {status !== 'idle' && (
+              <button 
+                onClick={resetApp}
+                className="text-sm font-medium text-slate-500 hover:text-indigo-600 flex items-center space-x-1 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                <RefreshCw size={14} />
+                <span>New Text</span>
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -144,6 +204,8 @@ const App: React.FC = () => {
                     word={selectedWord} 
                     isLoading={isAnalyzing} 
                     result={analysisResult} 
+                    onSave={handleSaveVocabulary}
+                    isSaved={isCurrentWordSaved}
                  />
               </div>
             </div>
@@ -172,12 +234,22 @@ const App: React.FC = () => {
                <AnalysisPanel 
                   word={selectedWord} 
                   isLoading={isAnalyzing} 
-                  result={analysisResult} 
+                  result={analysisResult}
+                  onSave={handleSaveVocabulary}
+                  isSaved={isCurrentWordSaved}
                />
             </div>
           </div>
         </div>
       )}
+
+      {/* Vocabulary List Drawer */}
+      <VocabularyList 
+        isOpen={showVocabulary} 
+        onClose={() => setShowVocabulary(false)} 
+        items={savedItems}
+        onDelete={handleDeleteVocabulary}
+      />
 
     </div>
   );

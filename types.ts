@@ -14,3 +14,10 @@ export interface WordToken {
   isWord: boolean;
   id: string; // unique identifier for React keys
 }
+
+export interface VocabularyItem {
+  id: string;
+  word: string;
+  analysis: AnalysisResult;
+  timestamp: number;
+}

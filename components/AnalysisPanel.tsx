@@ -1,14 +1,16 @@
 import React from 'react';
 import { AnalysisResult } from '../types';
-import { BookOpen, MessageCircle, Lightbulb, Search } from 'lucide-react';
+import { BookOpen, MessageCircle, Lightbulb, Search, Bookmark, Check } from 'lucide-react';
 
 interface AnalysisPanelProps {
   word: string | null;
   isLoading: boolean;
   result: AnalysisResult | null;
+  onSave?: () => void;
+  isSaved?: boolean;
 }
 
-export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ word, isLoading, result }) => {
+export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ word, isLoading, result, onSave, isSaved }) => {
   if (!word) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-slate-400 p-8 text-center border-l border-slate-100">
@@ -35,9 +37,26 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ word, isLoading, r
   return (
     <div className="h-full overflow-y-auto bg-white border-l border-slate-100 shadow-xl shadow-slate-200/50 z-20 flex flex-col">
       <div className="bg-indigo-600 p-6 text-white shrink-0">
-        <h2 className="text-3xl font-bold font-serif capitalize tracking-tight">{word}</h2>
-        <div className="mt-2 text-indigo-100 text-lg border-l-2 border-indigo-400 pl-3 italic">
-           {result.wordInContext}
+        <div className="flex justify-between items-start">
+          <div className="flex-grow pr-4">
+            <h2 className="text-3xl font-bold font-serif capitalize tracking-tight">{word}</h2>
+            <div className="mt-2 text-indigo-100 text-lg border-l-2 border-indigo-400 pl-3 italic">
+               {result.wordInContext}
+            </div>
+          </div>
+          {onSave && (
+            <button
+              onClick={onSave}
+              className={`flex-shrink-0 p-3 rounded-full transition-all duration-200 ${
+                isSaved 
+                  ? 'bg-white text-indigo-600 shadow-lg scale-100' 
+                  : 'bg-indigo-500/50 text-indigo-100 hover:bg-indigo-500 hover:text-white'
+              }`}
+              title={isSaved ? "Saved to Vocabulary" : "Save to Vocabulary"}
+            >
+              {isSaved ? <Check size={24} /> : <Bookmark size={24} />}
+            </button>
+          )}
         </div>
       </div>
 

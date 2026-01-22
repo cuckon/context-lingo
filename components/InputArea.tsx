@@ -45,7 +45,7 @@ export const InputArea: React.FC<InputAreaProps> = ({ input, setInput, onTransla
         </div>
       </div>
       <p className="text-center text-sm text-slate-400">
-        Powered by Gemini 2.5 • Context-Aware Translation
+        Powered by Gemini 3 • Context-Aware Language Intelligence
       </p>
     </div>
   );
