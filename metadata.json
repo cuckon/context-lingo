@@ -1,0 +1,5 @@
+{
+  "name": "ContextLingo - English Context Learning",
+  "description": "An intelligent English learning assistant that translates paragraphs and provides deep, context-aware analysis of specific words and phrases using Gemini AI.",
+  "requestFramePermissions": []
+}
